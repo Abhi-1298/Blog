@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %} Home Page {% endblock %}
+
+{% block content %}
+<style>
+    .blog-body {
+        border-style: solid;
+        background-color: palegreen;
+        border-width: 0;
+        padding: 5px;
+        max-width: 100rem;
+        padding: 5px;
+    }
+
+    .blog-options {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .blog-title {
+        font-size: large;
+    }
+
+    .thumbs-down-color {
+        color: crimson;
+    }
+
+    .thumbs-up-color {
+        color: red;
+    }
+
+    .blackiconcolor {
+        color: black;
+    }
+
+    .comment-section {
+        margin: auto;
+        margin-top: 15px;
+    }
+</style>
+
+
+<div>
+
+    <a href="{% url 'create_blog' %}"><button class="btn btn-primary mt-2">create_blog</button></a>
+
+    <div style="float: right; background-color:palegreen; margin-top: 10px;">
+        <i class="fa fa-user fa-lg"><b>@{{user.username}}</b></i>
+    </div>
+
+    <br><br>
+
+    {% for blog in blogs %}
+    <!-- Blog  Body -->
+    <div class="blog-body">
+        <div class="row">
+            <div class="col-6 blog-title">
+                <b>@{{blog.author}}</b> <br>
+                <button class="btn-sm btn btn-primary" onclick="show('{{blog.id}}')">UserInfo</button>
+                <div style="display: none;" id="{{blog.id}}_profile">
+                       <p >{{user.first_name}} {{user.last_name}}</p>
+                </div>
+            </div>
+
+            <div class="col-6 blog-time">
+                <small>{{blog.created_at}}</small>
+
+            </div>
+
+        </div>
+
+        <div class="blog-content" style="padding: 15px;">
+            {{blog.pre_context}}
+        </div>
+        <!-- Blog  Options -->
+        <div class="row blog-options">
+            <div class="col-4 justify-content-center">
+                {% if user.id in blog.liked_users %}
+                <a href="{% url 'like_blog' blog.id %}"><i class="fa fa-thumbs-up fa-lg">{{blog.likes.count}}</i></a>
+                {% else %}
+                <a href="{% url 'like_blog' blog.id %}"><i
+                        class="fa fa-thumbs-up fa-lg blackiconcolor">{{blog.likes.count}}</i></a>
+                {% endif %}
+            </div>
+
+            <div class="col-4 justify-content-center">
+                <i onclick="toggleCommentSection('{{blog.id}}')" class="fa fa-comment fa-lg">{{blog.count_comments}}</i>
+            </div>
+
+            <div class="col-4 justify-content-center pl-5">
+                <i class="fa fa-share fa-lg ml-5"></i>
+            </div>
+        </div>
+        <!-- Comment Section -->
+        <div id="{{blog.id}}_comment" class="row comment-section justify-content-center"
+            style="display: none; width: 70%;">
+
+
+            <!-- here commenter comment and that id we pass in myCommentFn -->
+            <div class="col-9">
+                <input id="{{blog.id}}_comment_input" type="text" placeholder="Comment here.."
+                    class="form-control-sm w-100">
+            </div>
+            <!-- passing this blog id id="{{blog.id}}_comment_input -- in my CommentFn  
+            we got the blog id -->
+            <div class="col-3">
+                <button class="btn btn-primary btn-sm" onclick="myCommentFn('{{blog.id}}')"> Comment </button>
+            </div>
+
+
+            <ul id="{{blog.id}}_comment_li" style="list-style-type: none; padding-top: 15px; margin-left: 40px;">
+                <!-- putting id here will not add comment in  li instantly..because after commenting in the input it will show -->
+                <!-- this much is our comment model li to li -->
+                {% for comment in blog.get_comments %}
+                <li>
+                    <div class="row">
+                        <div class="col-6">
+                            <i class="fa fa-user fa-sm"> <b>@{{comment.user.username}}</b></i>
+                        </div>
+                        <div class="col-6">
+                            <small>{{comment.created_at}}</small>
+                        </div>
+                    </div>
+                    <div id="{{blog.id}}_{{comment.id}}_edit_comment" style="display: none;">
+
+                        <input id="{{blog.id}}_{{comment.id}}_comment_value" type="text" value="{{comment.body}}">
+                        &ThinSpace;&ThickSpace; <button class="btn btn-primary btn-sm"
+                            onclick="edit_submit_comment('{{blog.id}}','{{comment.id}}','submit_comment')">Comment</button></small>
+                    </div>
+                    <div id="{{blog.id}}_{{comment.id}}_show_comment">
+                        <!-- only to update the {{comment.body}} -->
+                        <p id="{{blog.id}}_{{comment.id}}_show_comment" {% if user.username == comment.user.username %}
+                            ondblclick="edit_submit_comment('{{blog.id}}','{{comment.id}}','show_comment')" {% endif %}>
+                            <span id="{{blog.id}}_{{comment.id}}_comment_span">{{comment.body}}</span>
+                        </p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <hr>
+    {% endfor %}
+</div>
+
+<!-- JavaScript -->
+<script>
+    // for profile
+    function show(blogID) {
+        console.log(blogID)
+        $(`#${blogID}_profile`).toggle()
+
+    }
+
+    // edit comment
+    function edit_submit_comment(blogID, cmtID, reqFor) {
+        console.log(blogID, cmtID)
+        // first comment will show then edit below
+        $(`#${blogID}_${cmtID}_show_comment`).toggle();
+        $(`#${blogID}_${cmtID}_edit_comment`).toggle();
+        comment = $(`#${blogID}_${cmtID}_comment_value`).val()
+        if (reqFor == 'submit_comment') {
+            console.log(comment)
+            $.ajax({
+                url: `{% url 'comment_blog_edit' %}`,
+                type: "PUT",
+                data: {
+                    "commentBody": comment,
+                    "commentId": cmtID,
+                },
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }, // for csrf token
+                success: function (data) {
+                    console.log(data)
+                    comment_body_span = $(`#${data['comment']['blog_id']}_${data['comment']['cmt_id']}_comment_span`).html(`${data['comment']['body']}`)
+                }
+            });
+        }
+    }
+
+    // toggle for hide and show
+    // all these js function and selectio of id are for django so search for django how its done 
+    function toggleCommentSection(blogID) {
+        console.log(blogID)
+        $(`#${blogID}_comment`).toggle();
+    }
+
+    function myLikeFn(x) {
+        x.classList.toggle("thumbs-up-color");
+    }
+    // here we pass the commenter value and do ajax
+function myCommentFn(blogID) {
+    console.log(blogID)
+    $.ajax({
+        url: `{% url 'comment_blog' %}`, // blog id can be send here
+        type: "post", // or get and to create something post request is required
+        // data send by the commenter...here sends to server i.e console
+
+        data: {
+            "commentBody": $(`#${blogID}_comment_input`).val(),
+            "blogId": blogID,
+        },
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }, 
+        // what happens when success
+        success: function (data) {
+            console.log(data)
+            // here if data gone successfully
+            // blog.id form li
+            // append() property is of  java script....
+            // basically here it appends means adding a array  to the tail end 
+            // $(`#${blogID}_comment_li`) a id
+            // here we append the things but we have to get out the inner html 
+            all_comments = $(`#${blogID}_comment_li`).html() // jquery.html() op is string.
+            // inner html making Empty
+            $(`#${blogID}_comment_li`).html('')
+
+            $(`#${blogID}_comment_li`).append(`<li>
+                <div class="row">
+                    <div class="col-6">
+                        <i class="fa fa-user fa-sm"> <b>@${data['comment']['username']}</b></i>
+                    </div>
+                    <div class="col-6">
+                        <small>${data['comment']['created_at']}</small>
+                    </div>
+                </div>
+                <div id="${data['comment']['blog_id']}_${data['comment']['cmt_id']}_edit_comment" style="display: none;">
+                    <input id="${data['comment']['blog_id']}_${data['comment']['cmt_id']}_comment_value" type="text" value="${data['comment']['body']}">
+                    &ThinSpace;&ThickSpace; <button class="btn btn-primary btn-sm"
+                        onclick="edit_submit_comment('{{blog.id}}','{{comment.id}}','submit_comment')">Comment</button></small>
+                </div>
+                <div id="${data['comment']['blog_id']}_${data['comment']['cmt_id']}_show_comment">
+                    
+                    <p ondblclick="edit_submit_comment('${data['comment']['blog_id']}_${data['comment']['cmt_id']}','show_comment')" >
+                        ${data['comment']['body']}</p>
+                </div>
+            </li>`)
+            // appending the inner html here what we got in - all_comments
+            $(`#${blogID}_comment_li`).append(all_comments)
+        },
+        // here what happens if error
+    });
+}
+
+   
+</script>
+{% endblock %}
+
