@@ -9,6 +9,8 @@ from django.http import QueryDict
 
 # Create your views here.
 
+def base(request):
+    return render(request,'base.html','base')
 
 def blogs(request):
     blogs = Blog.objects.all().order_by('-created_at')

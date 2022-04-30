@@ -5,8 +5,8 @@ from testapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    path('blogs/', views.blogs, name="blogs"),
+
+    path('', views.blogs, name="blogs"),
     path('blog/create/', views.create_blog, name="create_blog"),
     path('blog/like/<int:blog_id>', views.like_blog, name="like_blog"),
     path('blog/comment/', views.comment_blog, name="comment_blog"),
